@@ -33,10 +33,7 @@ export const watchPoll = (notice: PollNoticeModel) => async (dispatch/*, getStat
 }
 
 export const watchInitPolls = () => async (dispatch) => {
-
-  const callback = (notice) => {
-    return dispatch(watchPoll(notice))
-  }
+  const callback = (notice) => dispatch(watchPoll(notice))
 
   const dao = await contractsManagerDAO.getVotingDAO()
   const timeDAO = await contractsManagerDAO.getTIMEDAO()
@@ -154,6 +151,9 @@ export const listPolls = () => async (dispatch) => {
   try {
     const dao = await contractsManagerDAO.getVotingDetailsDAO()
     list = await dao.getPolls()
+  } catch (e) {
+    // eslint-disable-next-line
+    console.error('list poll error', e.message)
   } finally {
     dispatch({
       type: POLLS_LIST,

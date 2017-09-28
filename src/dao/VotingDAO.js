@@ -49,6 +49,7 @@ export default class VotingDAO extends AbstractMultisigContractDAO {
       description: poll.description(),
       files: poll.files() && poll.files(),
       options: poll.options() && poll.options().toArray(),
+      published: poll.published().getTime()
     })
     const timeDAO = await contractsManagerDAO.getTIMEDAO()
     const voteLimitInTIME = poll.voteLimitInTIME()
@@ -102,27 +103,27 @@ export default class VotingDAO extends AbstractMultisigContractDAO {
     )
   }
 
-  async watchActivated (callback) {
+  watchActivated (callback) {
     return this._watch(EVENT_POLL_ACTIVATED, this._watchCallback(callback, IS_ACTIVATED))
   }
 
-  async watchEnded (callback) {
+  watchEnded (callback) {
     return this._watch(EVENT_POLL_ENDED, this._watchCallback(callback, IS_ENDED))
   }
 
-  async watchCreated (callback) {
+  watchCreated (callback) {
     return this._watch(EVENT_POLL_CREATED, this._watchCallback(callback, IS_CREATED))
   }
 
-  async watchUpdated (callback) {
+  watchUpdated (callback) {
     return this._watch(EVENT_POLL_UPDATED, this._watchCallback(callback, IS_UPDATED))
   }
 
-  async watchRemoved (callback) {
+  watchRemoved (callback) {
     return this._watch(EVENT_POLL_DELETED, this._watchCallback(callback, IS_REMOVED))
   }
 
-  async watchVoted (callback) {
+  watchVoted (callback) {
     return this._watch(EVENT_VOTE_CREATED, this._watchCallback(callback, IS_VOTED))
   }
 }

@@ -20,8 +20,8 @@ export default class VotingDetailsDAO extends AbstractContractDAO {
 
   async getPolls () {
     const [activeIds, inactiveIds] = await Promise.all([
-      await this.getActivePollIds(),
-      await this.getInactivePollIds()
+      this.getActivePollIds(),
+      this.getInactivePollIds()
     ])
     return await Promise.all(
       [...activeIds, ...inactiveIds].map(id => this.getPollDetails(id))
@@ -42,12 +42,12 @@ export default class VotingDetailsDAO extends AbstractContractDAO {
     try {
       const [response, timeDAO] = await Promise.all([
         this._call('getPoll', [pollId]),
-        await contractsManagerDAO.getTIMEDAO()
+        contractsManagerDAO.getTIMEDAO()
       ])
-      const [ id, owner, hashBytes, voteLimit, deadline, status, active, published ] = response
+      const [ id, owner, hashBytes, voteLimit, deadline, status, active, options, /*hashes*/ ] = response
 
       const hash = this._c.bytes32ToIPFSHash(hashBytes)
-      const { title, description, options, files } = await ipfs.get(hash)
+      const { title, description, files, published } = await ipfs.get(hash)
       return new PollModel({
         id: id.toNumber(),
         owner,
@@ -56,13 +56,15 @@ export default class VotingDetailsDAO extends AbstractContractDAO {
         description,
         voteLimitInTIME: voteLimit.equals(new BigNumber(0)) ? null : timeDAO.removeDecimals(voteLimit),
         deadline: deadline && new Date(deadline.toNumber()), // deadline is just a timestamp
-        published: published && new Date(published.toNumber()), // published is just a timestamp
+        published: published && new Date(published), // published is just a timestamp
         status,
         active,
-        options: new Immutable.List(options || []),
+        options: new Immutable.List(options.map(option => this._c.bytesToString(option))),
         files
       })
     } catch (e) {
+      // eslint-disable-next-line
+      console.error('get poll error', e.message)
       // ignore, poll doesn't exist
       return null
     }
@@ -74,14 +76,19 @@ export default class VotingDetailsDAO extends AbstractContractDAO {
       this._call('getOptionsVotesForPoll', [pollId]),
       this._call('getOptionsVotesStatisticForPoll', [pollId]),
       this._call('getMemberVotesForPoll', [pollId]),
-      await contractsManagerDAO.getTIMEDAO(),
-      await contractsManagerDAO.getTIMEHolderDAO()
+      contractsManagerDAO.getTIMEDAO(),
+      contractsManagerDAO.getTIMEHolderDAO()
     ])
-    const totalSupply = await timeDAO.totalSupply()
-    const shareholdersCount = await timeHolderDAO.shareholdersCount()
-    const files = poll && await ipfs.get(poll.files())
+    if (!poll) {
+      return
+    }
+    const [totalSupply, shareholdersCount, files] = await Promise.all([
+      timeDAO.totalSupply(),
+      timeHolderDAO.shareholdersCount(),
+      ipfs.get(poll.files())
+    ])
 
-    return poll && new PollDetailsModel({
+    return new PollDetailsModel({
       poll,
       votes,
       statistics,
@@ -90,8 +97,7 @@ export default class VotingDetailsDAO extends AbstractContractDAO {
       totalSupply,
       shareholdersCount,
       files: new Immutable.List(
-        (files && files.links || [])
-          .map(item => FileModel.createFromLink(item))
+        (files && files.links || []).map(item => FileModel.createFromLink(item))
       )
     })
   }
